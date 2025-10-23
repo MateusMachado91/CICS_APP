@@ -1,0 +1,173 @@
+﻿@page "/"
+@using PYBWeb.Domain.Interfaces
+@using PYBWeb.Domain.Enums
+@inject ISolicitacaoRepository SolicitacaoRepository
+@inject IAmbienteRepository AmbienteRepository
+
+<PageTitle>Dashboard - PYB CICS</PageTitle>
+
+<div class="container-fluid">
+    <div class="row mb-4">
+        <div class="col-12">
+            <h1 class="display-4 text-primary">
+                <i class="bi bi-speedometer2"></i> Dashboard
+            </h1>
+            <p class="lead">Sistema de Gerenciamento de Solicitações CICS - BANRISUL</p>
+        </div>
+    </div>
+
+    @if (isLoading)
+    {
+        <div class="d-flex justify-content-center">
+            <div class="spinner-border text-primary" role="status">
+                <span class="visually-hidden">Carregando...</span>
+            </div>
+        </div>
+    }
+    else
+    {
+        <!-- Cards de Estatísticas -->
+        <div class="row mb-4">
+            <div class="col-md-3">
+                <div class="card bg-primary text-white">
+                    <div class="card-body">
+                        <div class="d-flex justify-content-between">
+                            <div>
+                                <h4 class="card-title">@totalSolicitacoes</h4>
+                                <p class="card-text">Total de Solicitações</p>
+                            </div>
+                            <div class="align-self-center">
+                                <i class="bi bi-file-earmark-text h2"></i>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <div class="col-md-3">
+                <div class="card bg-warning text-white">
+                    <div class="card-body">
+                        <div class="d-flex justify-content-between">
+                            <div>
+                                <h4 class="card-title">@solicitacoesPendentes</h4>
+                                <p class="card-text">Pendentes</p>
+                            </div>
+                            <div class="align-self-center">
+                                <i class="bi bi-clock h2"></i>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <div class="col-md-3">
+                <div class="card bg-info text-white">
+                    <div class="card-body">
+                        <div class="d-flex justify-content-between">
+                            <div>
+                                <h4 class="card-title">@solicitacoesEmAnalise</h4>
+                                <p class="card-text">Em Análise</p>
+                            </div>
+                            <div class="align-self-center">
+                                <i class="bi bi-search h2"></i>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <div class="col-md-3">
+                <div class="card bg-success text-white">
+                    <div class="card-body">
+                        <div class="d-flex justify-content-between">
+                            <div>
+                                <h4 class="card-title">@solicitacoesAprovadas</h4>
+                                <p class="card-text">Aprovadas</p>
+                            </div>
+                            <div class="align-self-center">
+                                <i class="bi bi-check-circle h2"></i>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Cards de Ações Rápidas -->
+        <div class="row mb-4">
+            <div class="col-12">
+                <h3>Ações Rápidas</h3>
+            </div>
+            <div class="col-md-4">
+                <div class="card h-100">
+                    <div class="card-body text-center">
+                        <i class="bi bi-plus-square text-primary h1"></i>
+                        <h5 class="card-title">Nova Solicitação</h5>
+                        <p class="card-text">Criar uma nova solicitação CICS</p>
+                        <a href="/solicitacoes/nova-teste" class="btn btn-primary btn-lg">Criar Solicitação</a>
+                    </div>
+                </div>
+            </div>
+
+            <div class="col-md-4">
+                <div class="card h-100">
+                    <div class="card-body text-center">
+                        <i class="bi bi-list-ul text-info h1"></i>
+                        <h5 class="card-title">Minhas Solicitações</h5>
+                        <p class="card-text">Visualizar solicitações criadas por você</p>
+                        <a href="/solicitacoes" class="btn btn-info btn-lg">Ver Solicitações</a>
+                    </div>
+                </div>
+            </div>
+
+            <div class="col-md-4">
+                <div class="card h-100">
+                    <div class="card-body text-center">
+                        <i class="bi bi-server text-success h1"></i>
+                        <h5 class="card-title">Ambientes CICS</h5>
+                        <p class="card-text">Gerenciar ambientes CICS</p>
+                        <a href="/ambientes" class="btn btn-success btn-lg">Ver Ambientes</a>
+                    </div>
+                </div>
+            </div>
+        </div>
+    }
+</div>
+
+@code {
+    private bool isLoading = true;
+    private int totalSolicitacoes = 0;
+    private int solicitacoesPendentes = 0;
+    private int solicitacoesEmAnalise = 0;
+    private int solicitacoesAprovadas = 0;
+
+    protected override async Task OnInitializedAsync()
+    {
+        try
+        {
+            var todasSolicitacoes = await SolicitacaoRepository.GetAllAsync();
+            totalSolicitacoes = todasSolicitacoes.Count();
+
+            var pendentes = await SolicitacaoRepository.GetByStatusAsync(StatusSolicitacao.Pendente);
+            solicitacoesPendentes = pendentes.Count();
+
+            var emAnalise = await SolicitacaoRepository.GetByStatusAsync(StatusSolicitacao.EmAnalise);
+            solicitacoesEmAnalise = emAnalise.Count();
+
+            var aprovadas = await SolicitacaoRepository.GetByStatusAsync(StatusSolicitacao.Aprovada);
+            solicitacoesAprovadas = aprovadas.Count();
+        }
+        catch (Exception)
+        {
+            // Log do erro - por enquanto, usar valores padrão
+            totalSolicitacoes = 0;
+            solicitacoesPendentes = 0;
+            solicitacoesEmAnalise = 0;
+            solicitacoesAprovadas = 0;
+        }
+        finally
+        {
+            isLoading = false;
+        }
+    }
+}

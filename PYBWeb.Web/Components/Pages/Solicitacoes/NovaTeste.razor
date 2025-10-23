@@ -1,0 +1,313 @@
+@page "/solicitacoes/nova-teste"
+@using PYBWeb.Domain.Entities
+@using PYBWeb.Domain.Interfaces
+@using PYBWeb.Domain.Enums
+@inject ISolicitacaoRepository SolicitacaoRepository
+@inject IAmbienteRepository AmbienteRepository
+@inject NavigationManager Navigation
+@rendermode InteractiveServer
+
+<PageTitle>Nova Solicitação - PYB CICS</PageTitle>
+
+<div class="container-fluid">
+    <div class="row mb-4">
+        <div class="col-md-8">
+            <h1 class="display-6 text-primary">
+                <i class="bi bi-plus-circle"></i> Nova Solicitação CICS (Teste)
+            </h1>
+        </div>
+        <div class="col-md-4 text-end">
+            <a href="/solicitacoes" class="btn btn-secondary">
+                <i class="bi bi-arrow-left"></i> Voltar
+            </a>
+        </div>
+    </div>
+
+    @if (isLoading)
+    {
+        <div class="text-center">
+            <div class="spinner-border text-primary" role="status">
+                <span class="visually-hidden">Carregando...</span>
+            </div>
+        </div>
+    }
+    else
+    {
+        <div class="card">
+            <div class="card-header">
+                <h5 class="card-title mb-0">Informações da Solicitação</h5>
+            </div>
+            <div class="card-body">
+                @if (!string.IsNullOrEmpty(mensagemErro))
+                {
+                    <div class="alert alert-danger">
+                        @mensagemErro
+                    </div>
+                }
+
+                <div class="row">
+                    <!-- Título -->
+                    <div class="col-md-8 mb-3">
+                        <label for="titulo" class="form-label">Título da Solicitação <span class="text-danger">*</span></label>
+                        <input type="text" id="titulo" class="form-control" @bind="titulo" @bind:event="oninput" 
+                               placeholder="Digite o título da solicitação..." />
+                    </div>
+
+                    <!-- Tipo de Tabela -->
+                    <div class="col-md-4 mb-3">
+                        <label for="tipoTabela" class="form-label">Tipo de Tabela CICS <span class="text-danger">*</span></label>
+                        <select id="tipoTabela" class="form-select" @bind="tipoTabela">
+                            <option value="">Selecione...</option>
+                            <option value="@((int)TipoTabela.DCT)">DCT - Destination Control Table</option>
+                            <option value="@((int)TipoTabela.FCT)">FCT - File Control Table</option>
+                            <option value="@((int)TipoTabela.PCT)">PCT - Program Control Table</option>
+                            <option value="@((int)TipoTabela.PPT)">PPT - Processing Program Table</option>
+                        </select>
+                    </div>
+                </div>
+
+                <div class="row">
+                    <!-- Ambiente -->
+                    <div class="col-md-6 mb-3">
+                        <label for="ambiente" class="form-label">Ambiente <span class="text-danger">*</span></label>
+                        <select id="ambiente" class="form-select" @bind="ambienteId">
+                            <option value="">Selecione o ambiente...</option>
+                            @foreach (var ambiente in ambientes)
+                            {
+                                <option value="@ambiente.Id">@ambiente.Nome - @ambiente.Descricao</option>
+                            }
+                        </select>
+                    </div>
+
+                    <!-- Prioridade -->
+                    <div class="col-md-3 mb-3">
+                        <label for="prioridade" class="form-label">Prioridade</label>
+                        <select id="prioridade" class="form-select" @bind="prioridade">
+                            <option value="1">Baixa</option>
+                            <option value="2">Normal</option>
+                            <option value="3">Alta</option>
+                            <option value="4">Urgente</option>
+                        </select>
+                    </div>
+
+                    <!-- Data Limite -->
+                    <div class="col-md-3 mb-3">
+                        <label for="dataLimite" class="form-label">Data Limite</label>
+                        <input type="date" id="dataLimite" class="form-control" @bind="dataLimite" />
+                    </div>
+                </div>
+
+                <!-- Descrição -->
+                <div class="mb-3">
+                    <label for="descricao" class="form-label">Descrição <span class="text-danger">*</span></label>
+                    <textarea id="descricao" class="form-control" rows="4" @bind="descricao" @bind:event="oninput"
+                              placeholder="Descreva detalhadamente a solicitação..."></textarea>
+                </div>
+
+                <!-- Justificativa -->
+                <div class="mb-3">
+                    <label for="justificativa" class="form-label">Justificativa <span class="text-danger">*</span></label>
+                    <textarea id="justificativa" class="form-control" rows="3" @bind="justificativa" @bind:event="oninput"
+                              placeholder="Justifique a necessidade desta solicitação..."></textarea>
+                </div>
+
+                <div class="row">
+                    <!-- Usuário Solicitante -->
+                    <div class="col-md-6 mb-3">
+                        <label for="usuarioSolicitante" class="form-label">Usuário Solicitante <span class="text-danger">*</span></label>
+                        <input type="text" id="usuarioSolicitante" class="form-control" @bind="usuarioSolicitante" @bind:event="oninput"
+                               placeholder="Login do usuário solicitante" />
+                    </div>
+
+                    <!-- Área Solicitante -->
+                    <div class="col-md-6 mb-3">
+                        <label for="areaSolicitante" class="form-label">Área Solicitante <span class="text-danger">*</span></label>
+                        <input type="text" id="areaSolicitante" class="form-control" @bind="areaSolicitante" @bind:event="oninput"
+                               placeholder="Área/Departamento solicitante" />
+                    </div>
+                </div>
+
+                <!-- Observações -->
+                <div class="mb-4">
+                    <label for="observacoes" class="form-label">Observações</label>
+                    <textarea id="observacoes" class="form-control" rows="2" @bind="observacoes" @bind:event="oninput"
+                              placeholder="Observações adicionais (opcional)..."></textarea>
+                </div>
+
+                <!-- Botões de Ação -->
+                <div class="d-flex justify-content-between">
+                    <button type="button" class="btn btn-secondary" @onclick="VoltarLista">
+                        <i class="bi bi-x-circle"></i> Cancelar
+                    </button>
+                    <button type="button" class="btn btn-primary" @onclick="SalvarSolicitacao" disabled="@isSaving">
+                        @if (isSaving)
+                        {
+                            <span class="spinner-border spinner-border-sm me-2" role="status"></span>
+                            <span>Salvando...</span>
+                        }
+                        else
+                        {
+                            <i class="bi bi-check-circle"></i>
+                            <span>Criar Solicitação</span>
+                        }
+                    </button>
+                </div>
+            </div>
+        </div>
+    }
+</div>
+
+@if (showSuccessAlert)
+{
+    <div class="position-fixed top-0 end-0 p-3" style="z-index: 11">
+        <div class="toast show" role="alert">
+            <div class="toast-header">
+                <i class="bi bi-check-circle-fill text-success me-2"></i>
+                <strong class="me-auto">Sucesso</strong>
+                <button type="button" class="btn-close" @onclick="() => showSuccessAlert = false"></button>
+            </div>
+            <div class="toast-body">
+                Solicitação criada com sucesso!
+            </div>
+        </div>
+    </div>
+}
+
+@code {
+    private bool isLoading = true;
+    private bool isSaving = false;
+    private bool showSuccessAlert = false;
+    private string mensagemErro = "";
+    private List<Ambiente> ambientes = new();
+
+    // Campos do formulário
+    private string titulo = "";
+    private string descricao = "";
+    private string justificativa = "";
+    private string tipoTabela = "";
+    private string ambienteId = "";
+    private int prioridade = 2;
+    private DateTime? dataLimite = null;
+    private string usuarioSolicitante = "";
+    private string areaSolicitante = "";
+    private string observacoes = "";
+
+    protected override async Task OnInitializedAsync()
+    {
+        await CarregarDados();
+    }
+
+    private async Task CarregarDados()
+    {
+        try
+        {
+            var todosAmbientes = await AmbienteRepository.GetAllAsync();
+            ambientes = todosAmbientes.ToList();
+        }
+        catch (Exception)
+        {
+            ambientes = new List<Ambiente>();
+        }
+        finally
+        {
+            isLoading = false;
+        }
+    }
+
+    private async Task SalvarSolicitacao()
+    {
+        mensagemErro = "";
+        
+        // Validação
+        if (string.IsNullOrWhiteSpace(titulo))
+        {
+            mensagemErro = "O título é obrigatório";
+            return;
+        }
+        
+        if (string.IsNullOrWhiteSpace(descricao))
+        {
+            mensagemErro = "A descrição é obrigatória";
+            return;
+        }
+        
+        if (string.IsNullOrWhiteSpace(justificativa))
+        {
+            mensagemErro = "A justificativa é obrigatória";
+            return;
+        }
+        
+        if (string.IsNullOrWhiteSpace(tipoTabela))
+        {
+            mensagemErro = "O tipo de tabela é obrigatório";
+            return;
+        }
+        
+        if (string.IsNullOrWhiteSpace(ambienteId))
+        {
+            mensagemErro = "O ambiente é obrigatório";
+            return;
+        }
+        
+        if (string.IsNullOrWhiteSpace(usuarioSolicitante))
+        {
+            mensagemErro = "O usuário solicitante é obrigatório";
+            return;
+        }
+        
+        if (string.IsNullOrWhiteSpace(areaSolicitante))
+        {
+            mensagemErro = "A área solicitante é obrigatória";
+            return;
+        }
+
+        isSaving = true;
+        try
+        {
+            // Converter para entidade
+            var novaSolicitacao = new Solicitacao
+            {
+                Titulo = titulo.Trim(),
+                Descricao = descricao.Trim(),
+                Justificativa = justificativa.Trim(),
+                TipoTabela = (TipoTabela)int.Parse(tipoTabela),
+                DataLimite = dataLimite,
+                Prioridade = prioridade,
+                UsuarioSolicitante = usuarioSolicitante.Trim(),
+                AreaSolicitante = areaSolicitante.Trim(),
+                Observacoes = string.IsNullOrWhiteSpace(observacoes) ? null : observacoes.Trim(),
+                AmbienteId = int.Parse(ambienteId),
+                Status = StatusSolicitacao.Pendente,
+                DataCriacao = DateTime.Now,
+                UsuarioCriacao = "CurrentUser",
+                Ativo = true
+            };
+            
+            // Gerar número da solicitação
+            novaSolicitacao.Numero = await SolicitacaoRepository.GerarProximoNumeroAsync();
+            
+            // Salvar no banco
+            await SolicitacaoRepository.AddAsync(novaSolicitacao);
+            
+            // Mostrar sucesso e redirecionar
+            showSuccessAlert = true;
+            StateHasChanged();
+            
+            await Task.Delay(2000);
+            Navigation.NavigateTo("/solicitacoes");
+        }
+        catch (Exception ex)
+        {
+            mensagemErro = $"Erro ao salvar: {ex.Message}";
+        }
+        finally
+        {
+            isSaving = false;
+        }
+    }
+
+    private void VoltarLista()
+    {
+        Navigation.NavigateTo("/solicitacoes");
+    }
+}

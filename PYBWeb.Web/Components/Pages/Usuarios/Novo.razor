@@ -1,0 +1,181 @@
+@page "/usuarios/novo"
+@using PYBWeb.Domain.Entities
+@using PYBWeb.Domain.Interfaces
+@inject IUsuarioRepository UsuarioRepository
+@inject NavigationManager Navigation
+
+<div class="container-fluid">
+    <div class="row mb-4">
+        <div class="col-md-8">
+            <h1 class="display-6 text-primary">
+                <i class="bi bi-person-plus"></i> Novo Usuário
+            </h1>
+        </div>
+        <div class="col-md-4 text-end">
+            <button class="btn btn-outline-secondary" @onclick="Cancelar">
+                <i class="bi bi-arrow-left"></i> Voltar
+            </button>
+        </div>
+    </div>
+
+    <div class="card">
+        <div class="card-body">
+            <form @onsubmit:preventDefault="true">
+                <div class="row">
+                    <div class="col-md-6">
+                        <div class="mb-3">
+                            <label for="nome" class="form-label">Nome Completo *</label>
+                            <input type="text" id="nome" class="form-control" @bind="usuario.Nome" required>
+                        </div>
+                    </div>
+                    <div class="col-md-6">
+                        <div class="mb-3">
+                            <label for="email" class="form-label">E-mail *</label>
+                            <input type="email" id="email" class="form-control" @bind="usuario.Email" required>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="row">
+                    <div class="col-md-6">
+                        <div class="mb-3">
+                            <label for="login" class="form-label">Login *</label>
+                            <input type="text" id="login" class="form-control" @bind="usuario.Login" required>
+                        </div>
+                    </div>
+                    <div class="col-md-6">
+                        <div class="mb-3">
+                            <label for="telefone" class="form-label">Telefone</label>
+                            <input type="text" id="telefone" class="form-control" @bind="usuario.Telefone">
+                        </div>
+                    </div>
+                </div>
+
+                <div class="row">
+                    <div class="col-md-6">
+                        <div class="mb-3">
+                            <label for="cargo" class="form-label">Cargo</label>
+                            <input type="text" id="cargo" class="form-control" @bind="usuario.Cargo">
+                        </div>
+                    </div>
+                    <div class="col-md-6">
+                        <div class="mb-3">
+                            <label for="area" class="form-label">Área</label>
+                            <input type="text" id="area" class="form-control" @bind="usuario.Area">
+                        </div>
+                    </div>
+                </div>
+
+                <div class="row">
+                    <div class="col-md-6">
+                        <div class="mb-3">
+                            <div class="form-check">
+                                <input type="checkbox" id="ativo" class="form-check-input" @bind="usuario.Ativo">
+                                <label for="ativo" class="form-check-label">Usuário Ativo</label>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="col-md-6">
+                        <div class="mb-3">
+                            <div class="form-check">
+                                <input type="checkbox" id="administrador" class="form-check-input" @bind="usuario.IsAdministrador">
+                                <label for="administrador" class="form-check-label">Administrador</label>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="row">
+                    <div class="col-md-6">
+                        <div class="mb-3">
+                            <div class="form-check">
+                                <input type="checkbox" id="podeAprovar" class="form-check-input" @bind="usuario.PodeAprovar">
+                                <label for="podeAprovar" class="form-check-label">Pode Aprovar Solicitações</label>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="d-flex justify-content-between">
+                    <button type="button" class="btn btn-secondary" @onclick="Cancelar">
+                        <i class="bi bi-x-circle"></i> Cancelar
+                    </button>
+                    <button type="button" class="btn btn-primary" @onclick="SalvarUsuario" disabled="@isSaving">
+                        @if (isSaving)
+                        {
+                            <span class="spinner-border spinner-border-sm me-2" role="status"></span>
+                        }
+                        <i class="bi bi-save"></i> Salvar Usuário
+                    </button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+
+@if (showSuccessAlert)
+{
+    <div class="position-fixed top-0 end-0 p-3" style="z-index: 11">
+        <div class="toast show" role="alert">
+            <div class="toast-header">
+                <i class="bi bi-check-circle-fill text-success me-2"></i>
+                <strong class="me-auto">Sucesso</strong>
+                <button type="button" class="btn-close" @onclick="() => showSuccessAlert = false"></button>
+            </div>
+            <div class="toast-body">
+                Usuário criado com sucesso!
+            </div>
+        </div>
+    </div>
+}
+
+@code {
+    private Usuario usuario = new Usuario();
+    private bool isSaving = false;
+    private bool showSuccessAlert = false;
+
+    protected override void OnInitialized()
+    {
+        // Inicializar usuário com valores padrão
+        usuario.Ativo = true;
+        usuario.DataCriacao = DateTime.Now;
+        usuario.DataAtualizacao = DateTime.Now;
+        usuario.UsuarioCriacao = "SYSTEM"; // TODO: Pegar do usuário logado
+        usuario.UsuarioAtualizacao = "SYSTEM"; // TODO: Pegar do usuário logado
+    }
+
+    private async Task SalvarUsuario()
+    {
+        if (string.IsNullOrWhiteSpace(usuario.Nome) || 
+            string.IsNullOrWhiteSpace(usuario.Email) || 
+            string.IsNullOrWhiteSpace(usuario.Login))
+        {
+            return; // TODO: Implementar validação mais robusta
+        }
+
+        isSaving = true;
+        try
+        {
+            await UsuarioRepository.AddAsync(usuario);
+            
+            showSuccessAlert = true;
+            StateHasChanged();
+            
+            await Task.Delay(2000);
+            Navigation.NavigateTo("/usuarios");
+        }
+        catch (Exception)
+        {
+            // TODO: Implementar tratamento de erro
+        }
+        finally
+        {
+            isSaving = false;
+        }
+    }
+
+    private void Cancelar()
+    {
+        Navigation.NavigateTo("/usuarios");
+    }
+}

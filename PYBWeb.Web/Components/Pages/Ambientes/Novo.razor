@@ -1,0 +1,181 @@
+@page "/ambientes/novo"
+@using PYBWeb.Domain.Entities
+@using PYBWeb.Domain.Interfaces
+@using PYBWeb.Domain.Enums
+@inject IAmbienteRepository AmbienteRepository
+@inject NavigationManager Navigation
+
+<div class="container-fluid">
+    <div class="row mb-4">
+        <div class="col-md-8">
+            <h1 class="display-6 text-primary">
+                <i class="bi bi-plus-circle"></i> Novo Ambiente CICS
+            </h1>
+        </div>
+        <div class="col-md-4 text-end">
+            <button class="btn btn-outline-secondary" @onclick="Cancelar">
+                <i class="bi bi-arrow-left"></i> Voltar
+            </button>
+        </div>
+    </div>
+
+    <div class="card">
+        <div class="card-body">
+            <form @onsubmit:preventDefault="true">
+                <div class="row">
+                    <div class="col-md-6">
+                        <div class="mb-3">
+                            <label for="nome" class="form-label">Nome do Ambiente *</label>
+                            <input type="text" id="nome" class="form-control" @bind="ambiente.Nome" required>
+                        </div>
+                    </div>
+                    <div class="col-md-6">
+                        <div class="mb-3">
+                            <label for="tipo" class="form-label">Tipo de Ambiente *</label>
+                            <select id="tipo" class="form-select" @bind="ambiente.Tipo" required>
+                                <option value="">Selecione o tipo...</option>
+                                @foreach (TipoAmbiente tipo in Enum.GetValues<TipoAmbiente>())
+                                {
+                                    <option value="@tipo">@GetTipoAmbienteDescricao(tipo)</option>
+                                }
+                            </select>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="row">
+                    <div class="col-md-12">
+                        <div class="mb-3">
+                            <label for="descricao" class="form-label">Descrição</label>
+                            <textarea id="descricao" class="form-control" rows="3" @bind="ambiente.Descricao" placeholder="Descrição detalhada do ambiente..."></textarea>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="row">
+                    <div class="col-md-6">
+                        <div class="mb-3">
+                            <label for="servidor" class="form-label">Servidor *</label>
+                            <input type="text" id="servidor" class="form-control" @bind="ambiente.Servidor" required placeholder="ex: mainframe01.empresa.com">
+                        </div>
+                    </div>
+                    <div class="col-md-6">
+                        <div class="mb-3">
+                            <label for="porta" class="form-label">Porta</label>
+                            <input type="number" id="porta" class="form-control" @bind="ambiente.Porta" placeholder="ex: 3270">
+                        </div>
+                    </div>
+                </div>
+
+                <div class="row">
+                    <div class="col-md-6">
+                        <div class="mb-3">
+                            <label for="regiaoCics" class="form-label">Região CICS *</label>
+                            <input type="text" id="regiaoCics" class="form-control" @bind="ambiente.RegiaoCics" required placeholder="ex: CICSREG1">
+                        </div>
+                    </div>
+                    <div class="col-md-6">
+                        <div class="mb-3">
+                            <div class="form-check mt-4">
+                                <input type="checkbox" id="ativo" class="form-check-input" @bind="ambiente.Ativo">
+                                <label for="ativo" class="form-check-label">Ambiente Ativo</label>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="d-flex justify-content-between">
+                    <button type="button" class="btn btn-secondary" @onclick="Cancelar">
+                        <i class="bi bi-x-circle"></i> Cancelar
+                    </button>
+                    <button type="button" class="btn btn-primary" @onclick="SalvarAmbiente" disabled="@isSaving">
+                        @if (isSaving)
+                        {
+                            <span class="spinner-border spinner-border-sm me-2" role="status"></span>
+                        }
+                        <i class="bi bi-save"></i> Salvar Ambiente
+                    </button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+
+@if (showSuccessAlert)
+{
+    <div class="position-fixed top-0 end-0 p-3" style="z-index: 11">
+        <div class="toast show" role="alert">
+            <div class="toast-header">
+                <i class="bi bi-check-circle-fill text-success me-2"></i>
+                <strong class="me-auto">Sucesso</strong>
+                <button type="button" class="btn-close" @onclick="() => showSuccessAlert = false"></button>
+            </div>
+            <div class="toast-body">
+                Ambiente criado com sucesso!
+            </div>
+        </div>
+    </div>
+}
+
+@code {
+    private Ambiente ambiente = new Ambiente();
+    private bool isSaving = false;
+    private bool showSuccessAlert = false;
+
+    protected override void OnInitialized()
+    {
+        // Inicializar ambiente com valores padrão
+        ambiente.Ativo = true;
+        ambiente.DataCriacao = DateTime.Now;
+        ambiente.DataAtualizacao = DateTime.Now;
+        ambiente.UsuarioCriacao = "SYSTEM"; // TODO: Pegar do usuário logado
+        ambiente.UsuarioAtualizacao = "SYSTEM"; // TODO: Pegar do usuário logado
+    }
+
+    private async Task SalvarAmbiente()
+    {
+        if (string.IsNullOrWhiteSpace(ambiente.Nome) || 
+            string.IsNullOrWhiteSpace(ambiente.Servidor) || 
+            string.IsNullOrWhiteSpace(ambiente.RegiaoCics))
+        {
+            return; // TODO: Implementar validação mais robusta
+        }
+
+        isSaving = true;
+        try
+        {
+            await AmbienteRepository.AddAsync(ambiente);
+            
+            showSuccessAlert = true;
+            StateHasChanged();
+            
+            await Task.Delay(2000);
+            Navigation.NavigateTo("/ambientes");
+        }
+        catch (Exception)
+        {
+            // TODO: Implementar tratamento de erro
+        }
+        finally
+        {
+            isSaving = false;
+        }
+    }
+
+    private void Cancelar()
+    {
+        Navigation.NavigateTo("/ambientes");
+    }
+
+    private string GetTipoAmbienteDescricao(TipoAmbiente tipo)
+    {
+        return tipo switch
+        {
+            TipoAmbiente.Desenvolvimento => "Desenvolvimento (DEV)",
+            TipoAmbiente.Teste => "Teste (TST)",
+            TipoAmbiente.Homologacao => "Homologação (HML)",
+            TipoAmbiente.Producao => "Produção (PRD)",
+            _ => tipo.ToString()
+        };
+    }
+}

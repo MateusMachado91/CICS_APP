@@ -1,0 +1,272 @@
+@page "/solicitacoes"
+@using PYBWeb.Domain.Entities
+@using PYBWeb.Domain.Interfaces
+@using PYBWeb.Domain.Enums
+@inject ISolicitacaoRepository SolicitacaoRepository
+@inject NavigationManager Navigation
+
+<PageTitle>Solicitações - PYB CICS</PageTitle>
+
+<div class="container-fluid">
+    <div class="row mb-4">
+        <div class="col-md-8">
+            <h1 class="display-6 text-primary">
+                <i class="bi bi-file-earmark-text"></i> Solicitações CICS
+            </h1>
+        </div>
+        <div class="col-md-4 text-end">
+            <a href="/solicitacoes/nova-teste" class="btn btn-primary">
+                <i class="bi bi-plus-circle"></i> Nova Solicitação
+            </a>
+        </div>
+    </div>
+
+    <!-- Filtros -->
+    <div class="row mb-3">
+        <div class="col-md-3">
+            <label for="filtroStatus" class="form-label">Status:</label>
+            <select id="filtroStatus" class="form-select" @bind="filtroStatus" @bind:after="AplicarFiltros">
+                <option value="">Todos</option>
+                <option value="@((int)StatusSolicitacao.Pendente)">Pendente</option>
+                <option value="@((int)StatusSolicitacao.EmAnalise)">Em Análise</option>
+                <option value="@((int)StatusSolicitacao.Aprovada)">Aprovada</option>
+                <option value="@((int)StatusSolicitacao.Rejeitada)">Rejeitada</option>
+                <option value="@((int)StatusSolicitacao.Implementada)">Implementada</option>
+                <option value="@((int)StatusSolicitacao.Cancelada)">Cancelada</option>
+            </select>
+        </div>
+        <div class="col-md-3">
+            <label for="filtroTipoTabela" class="form-label">Tipo de Tabela:</label>
+            <select id="filtroTipoTabela" class="form-select" @bind="filtroTipoTabela" @bind:after="AplicarFiltros">
+                <option value="">Todas</option>
+                <option value="@((int)TipoTabela.DCT)">DCT</option>
+                <option value="@((int)TipoTabela.FCT)">FCT</option>
+                <option value="@((int)TipoTabela.PCT)">PCT</option>
+                <option value="@((int)TipoTabela.PPT)">PPT</option>
+            </select>
+        </div>
+        <div class="col-md-4">
+            <label for="filtroTexto" class="form-label">Buscar:</label>
+            <input id="filtroTexto" type="text" class="form-control" placeholder="Número, título ou descrição..." @bind="filtroTexto" @onkeyup="AplicarFiltros" />
+        </div>
+        <div class="col-md-2 d-flex align-items-end">
+            <button class="btn btn-secondary w-100" @onclick="LimparFiltros">
+                <i class="bi bi-x-circle"></i> Limpar
+            </button>
+        </div>
+    </div>
+
+    @if (isLoading)
+    {
+        <div class="text-center">
+            <div class="spinner-border text-primary" role="status">
+                <span class="visually-hidden">Carregando...</span>
+            </div>
+        </div>
+    }
+    else if (solicitacoesFiltradas?.Any() != true)
+    {
+        <div class="alert alert-info">
+            <i class="bi bi-info-circle"></i> Nenhuma solicitação encontrada com os filtros aplicados.
+        </div>
+    }
+    else
+    {
+        <!-- Tabela de Solicitações -->
+        <div class="table-responsive">
+            <table class="table table-striped table-hover">
+                <thead class="table-dark">
+                    <tr>
+                        <th>Número</th>
+                        <th>Título</th>
+                        <th>Tipo Tabela</th>
+                        <th>Ambiente</th>
+                        <th>Status</th>
+                        <th>Solicitante</th>
+                        <th>Data Criação</th>
+                        <th>Ações</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    @foreach (var solicitacao in solicitacoesFiltradas)
+                    {
+                        <tr>
+                            <td>
+                                <strong>@solicitacao.Numero</strong>
+                            </td>
+                            <td>
+                                @if (solicitacao.Titulo.Length > 50)
+                                {
+                                    <span title="@solicitacao.Titulo">@(solicitacao.Titulo.Substring(0, 50))...</span>
+                                }
+                                else
+                                {
+                                    @solicitacao.Titulo
+                                }
+                            </td>
+                            <td>
+                                <span class="badge @GetBadgeClassTipoTabela(solicitacao.TipoTabela)">
+                                    @solicitacao.TipoTabela.ToString()
+                                </span>
+                            </td>
+                            <td>@solicitacao.Ambiente?.Nome</td>
+                            <td>
+                                <span class="badge @GetBadgeClassStatus(solicitacao.Status)">
+                                    @GetStatusText(solicitacao.Status)
+                                </span>
+                            </td>
+                            <td>@solicitacao.UsuarioSolicitante</td>
+                            <td>@solicitacao.DataCriacao.ToString("dd/MM/yyyy HH:mm")</td>
+                            <td>
+                                <div class="btn-group" role="group">
+                                    <button class="btn btn-sm btn-outline-primary" @onclick="() => VerDetalhes(solicitacao.Id)" title="Ver detalhes">
+                                        <i class="bi bi-eye"></i>
+                                    </button>
+                                    <button class="btn btn-sm btn-outline-secondary" @onclick="() => EditarSolicitacao(solicitacao.Id)" title="Editar">
+                                        <i class="bi bi-pencil"></i>
+                                    </button>
+                                </div>
+                            </td>
+                        </tr>
+                    }
+                </tbody>
+            </table>
+        </div>
+
+        <!-- Informações da Lista -->
+        <div class="row mt-3">
+            <div class="col-md-6">
+                <small class="text-muted">
+                    Mostrando @solicitacoesFiltradas.Count() de @todasSolicitacoes.Count() solicitações
+                </small>
+            </div>
+        </div>
+    }
+</div>
+
+@code {
+    private bool isLoading = true;
+    private IEnumerable<Solicitacao> todasSolicitacoes = new List<Solicitacao>();
+    private IEnumerable<Solicitacao> solicitacoesFiltradas = new List<Solicitacao>();
+
+    private string filtroStatus = "";
+    private string filtroTipoTabela = "";
+    private string filtroTexto = "";
+
+    protected override async Task OnInitializedAsync()
+    {
+        await CarregarSolicitacoes();
+    }
+
+    private async Task CarregarSolicitacoes()
+    {
+        isLoading = true;
+        try
+        {
+            todasSolicitacoes = await SolicitacaoRepository.GetAllAsync();
+            AplicarFiltros();
+        }
+        catch (Exception)
+        {
+            todasSolicitacoes = new List<Solicitacao>();
+            solicitacoesFiltradas = new List<Solicitacao>();
+        }
+        finally
+        {
+            isLoading = false;
+            StateHasChanged();
+        }
+    }
+
+    private void AplicarFiltros()
+    {
+        solicitacoesFiltradas = todasSolicitacoes;
+
+        // Filtro por status
+        if (!string.IsNullOrEmpty(filtroStatus) && int.TryParse(filtroStatus, out var statusInt))
+        {
+            var status = (StatusSolicitacao)statusInt;
+            solicitacoesFiltradas = solicitacoesFiltradas.Where(s => s.Status == status);
+        }
+
+        // Filtro por tipo de tabela
+        if (!string.IsNullOrEmpty(filtroTipoTabela) && int.TryParse(filtroTipoTabela, out var tipoTabelaInt))
+        {
+            var tipoTabela = (TipoTabela)tipoTabelaInt;
+            solicitacoesFiltradas = solicitacoesFiltradas.Where(s => s.TipoTabela == tipoTabela);
+        }
+
+        // Filtro por texto
+        if (!string.IsNullOrEmpty(filtroTexto))
+        {
+            var textoLower = filtroTexto.ToLower();
+            solicitacoesFiltradas = solicitacoesFiltradas.Where(s =>
+                s.Numero.ToLower().Contains(textoLower) ||
+                s.Titulo.ToLower().Contains(textoLower) ||
+                s.Descricao.ToLower().Contains(textoLower) ||
+                s.UsuarioSolicitante.ToLower().Contains(textoLower)
+            );
+        }
+
+        solicitacoesFiltradas = solicitacoesFiltradas.OrderByDescending(s => s.DataCriacao);
+        StateHasChanged();
+    }
+
+    private void LimparFiltros()
+    {
+        filtroStatus = "";
+        filtroTipoTabela = "";
+        filtroTexto = "";
+        AplicarFiltros();
+    }
+
+    private void VerDetalhes(int id)
+    {
+        Navigation.NavigateTo($"/solicitacoes/{id}");
+    }
+
+    private void EditarSolicitacao(int id)
+    {
+        Navigation.NavigateTo($"/solicitacoes/{id}/editar");
+    }
+
+    private string GetBadgeClassStatus(StatusSolicitacao status)
+    {
+        return status switch
+        {
+            StatusSolicitacao.Pendente => "bg-warning",
+            StatusSolicitacao.EmAnalise => "bg-info",
+            StatusSolicitacao.Aprovada => "bg-success",
+            StatusSolicitacao.Rejeitada => "bg-danger",
+            StatusSolicitacao.Implementada => "bg-primary",
+            StatusSolicitacao.Cancelada => "bg-secondary",
+            _ => "bg-light text-dark"
+        };
+    }
+
+    private string GetBadgeClassTipoTabela(TipoTabela tipo)
+    {
+        return tipo switch
+        {
+            TipoTabela.DCT => "bg-primary",
+            TipoTabela.FCT => "bg-success",
+            TipoTabela.PCT => "bg-warning",
+            TipoTabela.PPT => "bg-info",
+            _ => "bg-secondary"
+        };
+    }
+
+    private string GetStatusText(StatusSolicitacao status)
+    {
+        return status switch
+        {
+            StatusSolicitacao.Pendente => "Pendente",
+            StatusSolicitacao.EmAnalise => "Em Análise",
+            StatusSolicitacao.Aprovada => "Aprovada",
+            StatusSolicitacao.Rejeitada => "Rejeitada",
+            StatusSolicitacao.Implementada => "Implementada",
+            StatusSolicitacao.Cancelada => "Cancelada",
+            _ => "Desconhecido"
+        };
+    }
+}

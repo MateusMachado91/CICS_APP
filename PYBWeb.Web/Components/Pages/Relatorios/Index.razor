@@ -1,0 +1,400 @@
+@page "/relatorios"
+@inject ISolicitacaoRepository SolicitacaoRepository
+@inject IAmbienteRepository AmbienteRepository
+@inject IUsuarioRepository UsuarioRepository
+
+<PageTitle>Relatórios - PYB CICS</PageTitle>
+
+<div class="container-fluid">
+    <div class="row mb-4">
+        <div class="col-md-12">
+            <h1 class="display-6 text-primary">
+                <i class="bi bi-graph-up"></i> Relatórios e Análises
+            </h1>
+        </div>
+    </div>
+
+    @if (isLoading)
+    {
+        <div class="text-center">
+            <div class="spinner-border text-primary" role="status">
+                <span class="visually-hidden">Carregando dados...</span>
+            </div>
+        </div>
+    }
+    else
+    {
+        <!-- Cards de Resumo -->
+        <div class="row mb-4">
+            <div class="col-md-3 mb-3">
+                <div class="card bg-primary text-white">
+                    <div class="card-body">
+                        <div class="d-flex justify-content-between">
+                            <div>
+                                <h4 class="mb-0">@totalSolicitacoes</h4>
+                                <span>Total de Solicitações</span>
+                            </div>
+                            <div class="align-self-center">
+                                <i class="bi bi-clipboard-data" style="font-size: 2rem;"></i>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            <div class="col-md-3 mb-3">
+                <div class="card bg-warning text-dark">
+                    <div class="card-body">
+                        <div class="d-flex justify-content-between">
+                            <div>
+                                <h4 class="mb-0">@solicitacoesPendentes</h4>
+                                <span>Pendentes</span>
+                            </div>
+                            <div class="align-self-center">
+                                <i class="bi bi-clock" style="font-size: 2rem;"></i>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            <div class="col-md-3 mb-3">
+                <div class="card bg-info text-white">
+                    <div class="card-body">
+                        <div class="d-flex justify-content-between">
+                            <div>
+                                <h4 class="mb-0">@solicitacoesAndamento</h4>
+                                <span>Em Andamento</span>
+                            </div>
+                            <div class="align-self-center">
+                                <i class="bi bi-gear" style="font-size: 2rem;"></i>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            <div class="col-md-3 mb-3">
+                <div class="card bg-success text-white">
+                    <div class="card-body">
+                        <div class="d-flex justify-content-between">
+                            <div>
+                                <h4 class="mb-0">@solicitacoesConcluidas</h4>
+                                <span>Concluídas</span>
+                            </div>
+                            <div class="align-self-center">
+                                <i class="bi bi-check-circle" style="font-size: 2rem;"></i>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Gráficos e Relatórios -->
+        <div class="row">
+            <!-- Solicitações por Status -->
+            <div class="col-md-6 mb-4">
+                <div class="card">
+                    <div class="card-header">
+                        <h6 class="card-title mb-0">
+                            <i class="bi bi-pie-chart"></i> Solicitações por Status
+                        </h6>
+                    </div>
+                    <div class="card-body">
+                        @if (dadosStatus.Any())
+                        {
+                            <div class="row">
+                                @foreach (var item in dadosStatus)
+                                {
+                                    <div class="col-12 mb-2">
+                                        <div class="d-flex justify-content-between align-items-center">
+                                            <span class="badge @GetStatusBadgeClass(item.Key) me-2">@item.Key</span>
+                                            <span>@item.Value solicitações</span>
+                                        </div>
+                                        <div class="progress mt-1" style="height: 8px;">
+                                            <div class="progress-bar @GetStatusProgressClass(item.Key)" 
+                                                 style="width: @(totalSolicitacoes > 0 ? (item.Value * 100.0 / totalSolicitacoes) : 0)%"></div>
+                                        </div>
+                                    </div>
+                                }
+                            </div>
+                        }
+                        else
+                        {
+                            <p class="text-muted text-center">Nenhuma solicitação encontrada.</p>
+                        }
+                    </div>
+                </div>
+            </div>
+
+            <!-- Solicitações por Tipo de Tabela -->
+            <div class="col-md-6 mb-4">
+                <div class="card">
+                    <div class="card-header">
+                        <h6 class="card-title mb-0">
+                            <i class="bi bi-bar-chart"></i> Solicitações por Tipo de Tabela CICS
+                        </h6>
+                    </div>
+                    <div class="card-body">
+                        @if (dadosTipoTabela.Any())
+                        {
+                            <div class="row">
+                                @foreach (var item in dadosTipoTabela)
+                                {
+                                    <div class="col-12 mb-2">
+                                        <div class="d-flex justify-content-between align-items-center">
+                                            <span class="badge bg-primary me-2">@item.Key</span>
+                                            <span>@item.Value solicitações</span>
+                                        </div>
+                                        <div class="progress mt-1" style="height: 8px;">
+                                            <div class="progress-bar bg-primary" 
+                                                 style="width: @(totalSolicitacoes > 0 ? (item.Value * 100.0 / totalSolicitacoes) : 0)%"></div>
+                                        </div>
+                                    </div>
+                                }
+                            </div>
+                        }
+                        else
+                        {
+                            <p class="text-muted text-center">Nenhuma solicitação encontrada.</p>
+                        }
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <div class="row">
+            <!-- Solicitações por Ambiente -->
+            <div class="col-md-6 mb-4">
+                <div class="card">
+                    <div class="card-header">
+                        <h6 class="card-title mb-0">
+                            <i class="bi bi-hdd-network"></i> Solicitações por Ambiente
+                        </h6>
+                    </div>
+                    <div class="card-body">
+                        @if (dadosAmbiente.Any())
+                        {
+                            <div class="row">
+                                @foreach (var item in dadosAmbiente)
+                                {
+                                    <div class="col-12 mb-2">
+                                        <div class="d-flex justify-content-between align-items-center">
+                                            <span class="badge bg-info me-2">@item.Key</span>
+                                            <span>@item.Value solicitações</span>
+                                        </div>
+                                        <div class="progress mt-1" style="height: 8px;">
+                                            <div class="progress-bar bg-info" 
+                                                 style="width: @(totalSolicitacoes > 0 ? (item.Value * 100.0 / totalSolicitacoes) : 0)%"></div>
+                                        </div>
+                                    </div>
+                                }
+                            </div>
+                        }
+                        else
+                        {
+                            <p class="text-muted text-center">Nenhuma solicitação encontrada.</p>
+                        }
+                    </div>
+                </div>
+            </div>
+
+            <!-- Atividades Recentes -->
+            <div class="col-md-6 mb-4">
+                <div class="card">
+                    <div class="card-header">
+                        <h6 class="card-title mb-0">
+                            <i class="bi bi-clock-history"></i> Últimas Solicitações
+                        </h6>
+                    </div>
+                    <div class="card-body">
+                        @if (ultimasSolicitacoes.Any())
+                        {
+                            <div class="list-group list-group-flush">
+                                @foreach (var solicitacao in ultimasSolicitacoes)
+                                {
+                                    <div class="list-group-item px-0">
+                                        <div class="d-flex justify-content-between align-items-start">
+                                            <div class="flex-grow-1">
+                                                <h6 class="mb-1">@solicitacao.Titulo</h6>
+                                                <p class="mb-1 text-muted small">@solicitacao.UsuarioSolicitante</p>
+                                                <small>@solicitacao.DataCriacao.ToString("dd/MM/yyyy HH:mm")</small>
+                                            </div>
+                                            <span class="badge @GetStatusBadgeClass(solicitacao.Status.ToString())">
+                                                @solicitacao.Status
+                                            </span>
+                                        </div>
+                                    </div>
+                                }
+                            </div>
+                        }
+                        else
+                        {
+                            <p class="text-muted text-center">Nenhuma solicitação encontrada.</p>
+                        }
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Estatísticas Detalhadas -->
+        <div class="row">
+            <div class="col-md-12">
+                <div class="card">
+                    <div class="card-header">
+                        <h6 class="card-title mb-0">
+                            <i class="bi bi-table"></i> Estatísticas Detalhadas do Sistema
+                        </h6>
+                    </div>
+                    <div class="card-body">
+                        <div class="row">
+                            <div class="col-md-4">
+                                <h6>Usuários</h6>
+                                <ul class="list-unstyled">
+                                    <li><i class="bi bi-people text-primary"></i> Total de usuários: <strong>@totalUsuarios</strong></li>
+                                    <li><i class="bi bi-person-check text-success"></i> Usuários ativos: <strong>@usuariosAtivos</strong></li>
+                                    <li><i class="bi bi-person-x text-danger"></i> Usuários inativos: <strong>@usuariosInativos</strong></li>
+                                </ul>
+                            </div>
+                            <div class="col-md-4">
+                                <h6>Ambientes</h6>
+                                <ul class="list-unstyled">
+                                    <li><i class="bi bi-hdd-network text-primary"></i> Total de ambientes: <strong>@totalAmbientes</strong></li>
+                                    <li><i class="bi bi-hdd-network-fill text-success"></i> Ambientes ativos: <strong>@ambientesAtivos</strong></li>
+                                    <li><i class="bi bi-hdd text-danger"></i> Ambientes inativos: <strong>@ambientesInativos</strong></li>
+                                </ul>
+                            </div>
+                            <div class="col-md-4">
+                                <h6>Performance</h6>
+                                <ul class="list-unstyled">
+                                    <li><i class="bi bi-speedometer2 text-info"></i> Média de solicitações/dia: <strong>@mediaSolicitacoesPorDia.ToString("F1")</strong></li>
+                                    <li><i class="bi bi-calendar-week text-info"></i> Solicitações esta semana: <strong>@solicitacoesEstaSemana</strong></li>
+                                    <li><i class="bi bi-calendar-month text-info"></i> Solicitações este mês: <strong>@solicitacoesEsteMes</strong></li>
+                                </ul>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    }
+</div>
+
+@code {
+    private bool isLoading = true;
+
+    // Dados para relatórios
+    private int totalSolicitacoes = 0;
+    private int solicitacoesPendentes = 0;
+    private int solicitacoesAndamento = 0;
+    private int solicitacoesConcluidas = 0;
+    private int totalUsuarios = 0;
+    private int usuariosAtivos = 0;
+    private int usuariosInativos = 0;
+    private int totalAmbientes = 0;
+    private int ambientesAtivos = 0;
+    private int ambientesInativos = 0;
+    private double mediaSolicitacoesPorDia = 0;
+    private int solicitacoesEstaSemana = 0;
+    private int solicitacoesEsteMes = 0;
+
+    private Dictionary<string, int> dadosStatus = new();
+    private Dictionary<string, int> dadosTipoTabela = new();
+    private Dictionary<string, int> dadosAmbiente = new();
+    private List<Solicitacao> ultimasSolicitacoes = new();
+
+    protected override async Task OnInitializedAsync()
+    {
+        await CarregarDados();
+    }
+
+    private async Task CarregarDados()
+    {
+        try
+        {
+            // Carregar solicitações
+            var solicitacoes = (await SolicitacaoRepository.GetAllAsync()).ToList();
+            var usuarios = (await UsuarioRepository.GetAllAsync()).ToList();
+            var ambientes = (await AmbienteRepository.GetAllAsync()).ToList();
+
+            // Estatísticas básicas
+            totalSolicitacoes = solicitacoes.Count;
+            solicitacoesPendentes = solicitacoes.Count(s => s.Status == StatusSolicitacao.Pendente);
+            solicitacoesAndamento = solicitacoes.Count(s => s.Status == StatusSolicitacao.EmAnalise);
+            solicitacoesConcluidas = solicitacoes.Count(s => s.Status == StatusSolicitacao.Implementada);
+
+            totalUsuarios = usuarios.Count;
+            usuariosAtivos = usuarios.Count(u => u.Ativo);
+            usuariosInativos = usuarios.Count(u => !u.Ativo);
+
+            totalAmbientes = ambientes.Count;
+            ambientesAtivos = ambientes.Count(a => a.Ativo);
+            ambientesInativos = ambientes.Count(a => !a.Ativo);
+
+            // Dados para gráficos
+            dadosStatus = solicitacoes
+                .GroupBy(s => s.Status.ToString())
+                .ToDictionary(g => g.Key, g => g.Count());
+
+            dadosTipoTabela = solicitacoes
+                .GroupBy(s => s.TipoTabela.ToString())
+                .ToDictionary(g => g.Key, g => g.Count());
+
+            dadosAmbiente = solicitacoes
+                .Where(s => s.Ambiente != null)
+                .GroupBy(s => s.Ambiente!.Nome)
+                .ToDictionary(g => g.Key, g => g.Count());
+
+            // Últimas solicitações
+            ultimasSolicitacoes = solicitacoes
+                .OrderByDescending(s => s.DataCriacao)
+                .Take(5)
+                .ToList();
+
+            // Cálculos de performance
+            var dataInicio = solicitacoes.Any() ? solicitacoes.Min(s => s.DataCriacao) : DateTime.Now;
+            var diasDecorridos = Math.Max(1, (DateTime.Now - dataInicio).Days);
+            mediaSolicitacoesPorDia = totalSolicitacoes / (double)diasDecorridos;
+
+            var inicioSemana = DateTime.Now.AddDays(-(int)DateTime.Now.DayOfWeek);
+            solicitacoesEstaSemana = solicitacoes.Count(s => s.DataCriacao >= inicioSemana);
+
+            var inicioMes = new DateTime(DateTime.Now.Year, DateTime.Now.Month, 1);
+            solicitacoesEsteMes = solicitacoes.Count(s => s.DataCriacao >= inicioMes);
+        }
+        catch (Exception)
+        {
+            // TODO: Implementar tratamento de erro
+        }
+        finally
+        {
+            isLoading = false;
+        }
+    }
+
+    private string GetStatusBadgeClass(string status)
+    {
+        return status switch
+        {
+            "Pendente" => "bg-warning text-dark",
+            "EmAnalise" => "bg-info",
+            "Implementada" => "bg-success",
+            "Cancelada" => "bg-danger",
+            "Rejeitada" => "bg-danger",
+            "Aprovada" => "bg-primary",
+            _ => "bg-secondary"
+        };
+    }
+
+    private string GetStatusProgressClass(string status)
+    {
+        return status switch
+        {
+            "Pendente" => "bg-warning",
+            "EmAnalise" => "bg-info",
+            "Implementada" => "bg-success",
+            "Cancelada" => "bg-danger",
+            "Rejeitada" => "bg-danger",
+            "Aprovada" => "bg-primary",
+            _ => "bg-secondary"
+        };
+    }
+}

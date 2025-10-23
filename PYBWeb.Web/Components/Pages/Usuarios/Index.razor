@@ -1,0 +1,376 @@
+@page "/usuarios"
+@inject IUsuarioRepository UsuarioRepository
+@inject NavigationManager Navigation
+
+<PageTitle>Usuários - PYB CICS</PageTitle>
+
+<div class="container-fluid">
+    <div class="row mb-4">
+        <div class="col-md-8">
+            <h1 class="display-6 text-primary">
+                <i class="bi bi-people"></i> Usuários do Sistema
+            </h1>
+        </div>
+        <div class="col-md-4 text-end">
+            <button class="btn btn-primary" @onclick="NovoUsuario">
+                <i class="bi bi-person-plus"></i> Novo Usuário
+            </button>
+        </div>
+    </div>
+
+    <!-- Filtros -->
+    <div class="card mb-4">
+        <div class="card-body">
+            <div class="row g-3">
+                <div class="col-md-4">
+                    <label for="filtroNome" class="form-label">Filtrar por Nome</label>
+                    <input type="text" id="filtroNome" class="form-control" @bind="filtroNome" @bind:event="oninput" 
+                           placeholder="Digite o nome do usuário..." />
+                </div>
+                <div class="col-md-3">
+                    <label for="filtroEmail" class="form-label">Filtrar por E-mail</label>
+                    <input type="text" id="filtroEmail" class="form-control" @bind="filtroEmail" @bind:event="oninput" 
+                           placeholder="Digite o e-mail..." />
+                </div>
+                <div class="col-md-3">
+                    <label for="filtroStatus" class="form-label">Status</label>
+                    <select id="filtroStatus" class="form-select" @bind="filtroStatus" @bind:event="onchange">
+                        <option value="">Todos</option>
+                        <option value="true">Ativo</option>
+                        <option value="false">Inativo</option>
+                    </select>
+                </div>
+                <div class="col-md-2 d-flex align-items-end">
+                    <button class="btn btn-outline-secondary w-100" @onclick="LimparFiltros">
+                        <i class="bi bi-x-circle"></i> Limpar
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    @if (isLoading)
+    {
+        <div class="text-center">
+            <div class="spinner-border text-primary" role="status">
+                <span class="visually-hidden">Carregando...</span>
+            </div>
+        </div>
+    }
+    else if (!usuariosFiltrados.Any())
+    {
+        <div class="alert alert-info">
+            <i class="bi bi-info-circle"></i>
+            @if (TemFiltroAtivo())
+            {
+                <span>Nenhum usuário encontrado com os filtros aplicados.</span>
+            }
+            else
+            {
+                <span>Nenhum usuário cadastrado no sistema.</span>
+            }
+        </div>
+    }
+    else
+    {
+        <div class="card">
+            <div class="card-header">
+                <div class="d-flex justify-content-between align-items-center">
+                    <h6 class="mb-0">
+                        Usuários Encontrados (@usuariosFiltrados.Count())
+                    </h6>
+                    <small class="text-muted">
+                        Total: @usuarios.Count | Ativos: @usuarios.Count(u => u.Ativo) | Inativos: @usuarios.Count(u => !u.Ativo)
+                    </small>
+                </div>
+            </div>
+            <div class="card-body p-0">
+                <div class="table-responsive">
+                    <table class="table table-hover mb-0">
+                        <thead class="table-light">
+                            <tr>
+                                <th>Nome</th>
+                                <th>E-mail</th>
+                                <th>Login</th>
+                                <th>Perfil</th>
+                                <th>Status</th>
+                                <th>Último Acesso</th>
+                                <th class="text-center">Ações</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            @foreach (var usuario in usuariosFiltrados)
+                            {
+                                <tr class="@(usuario.Ativo ? "" : "table-secondary")">
+                                    <td>
+                                        <div class="d-flex align-items-center">
+                                            <div class="avatar bg-primary text-white rounded-circle me-2 d-flex align-items-center justify-content-center" 
+                                                 style="width: 32px; height: 32px; font-size: 14px;">
+                                                @GetInitials(usuario.Nome)
+                                            </div>
+                                            <div>
+                                                <strong>@usuario.Nome</strong>
+                                                @if (!string.IsNullOrEmpty(usuario.Cargo))
+                                                {
+                                                    <br><small class="text-muted">@usuario.Cargo</small>
+                                                }
+                                            </div>
+                                        </div>
+                                    </td>
+                                    <td>@usuario.Email</td>
+                                    <td><code>@usuario.Login</code></td>
+                                    <td>
+                                        <span class="badge @GetPerfilBadgeClass(usuario.IsAdministrador ? "Administrador" : "Usuário")">
+                                            @(usuario.IsAdministrador ? "Administrador" : "Usuário")
+                                        </span>
+                                    </td>
+                                    <td>
+                                        <span class="badge @(usuario.Ativo ? "bg-success" : "bg-danger")">
+                                            @(usuario.Ativo ? "Ativo" : "Inativo")
+                                        </span>
+                                    </td>
+                                    <td>
+                                        @if (usuario.UltimoLogin.HasValue)
+                                        {
+                                            <small>@usuario.UltimoLogin.Value.ToString("dd/MM/yyyy HH:mm")</small>
+                                        }
+                                        else
+                                        {
+                                            <small class="text-muted">Nunca acessou</small>
+                                        }
+                                    </td>
+                                    <td class="text-center">
+                                        <div class="btn-group btn-group-sm" role="group">
+                                            <button class="btn btn-outline-primary" @onclick="() => EditarUsuario(usuario.Id)" 
+                                                    title="Editar">
+                                                <i class="bi bi-pencil"></i>
+                                            </button>
+                                            <button class="btn btn-outline-info" @onclick="() => VerDetalhes(usuario.Id)"
+                                                    title="Detalhes">
+                                                <i class="bi bi-eye"></i>
+                                            </button>
+                                            <button class="btn btn-outline-@(usuario.Ativo ? "warning" : "success")" 
+                                                    @onclick="() => AlternarStatus(usuario)"
+                                                    title="@(usuario.Ativo ? "Desativar" : "Ativar")">
+                                                <i class="bi bi-@(usuario.Ativo ? "pause" : "play")"></i>
+                                            </button>
+                                            <button class="btn btn-outline-danger" @onclick="() => ConfirmarExclusao(usuario)"
+                                                    title="Excluir">
+                                                <i class="bi bi-trash"></i>
+                                            </button>
+                                        </div>
+                                    </td>
+                                </tr>
+                            }
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+    }
+</div>
+
+<!-- Modal de Confirmação de Exclusão -->
+@if (showDeleteModal)
+{
+    <div class="modal fade show d-block" tabindex="-1" style="background-color: rgba(0,0,0,0.5);">
+        <div class="modal-dialog">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h5 class="modal-title">Confirmar Exclusão</h5>
+                    <button type="button" class="btn-close" @onclick="CancelarExclusao"></button>
+                </div>
+                <div class="modal-body">
+                    <p>Tem certeza que deseja excluir o usuário <strong>@usuarioParaExcluir?.Nome</strong>?</p>
+                    <div class="alert alert-danger">
+                        <i class="bi bi-exclamation-triangle"></i>
+                        Esta ação removerá permanentemente o usuário e não pode ser desfeita!
+                    </div>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" @onclick="CancelarExclusao">Cancelar</button>
+                    <button type="button" class="btn btn-danger" @onclick="ConfirmarExcluirUsuario" disabled="@isDeleting">
+                        @if (isDeleting)
+                        {
+                            <span class="spinner-border spinner-border-sm me-2" role="status"></span>
+                        }
+                        Excluir Usuário
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+}
+
+@if (showSuccessAlert)
+{
+    <div class="position-fixed top-0 end-0 p-3" style="z-index: 11">
+        <div class="toast show" role="alert">
+            <div class="toast-header">
+                <i class="bi bi-check-circle-fill text-success me-2"></i>
+                <strong class="me-auto">Sucesso</strong>
+                <button type="button" class="btn-close" @onclick="() => showSuccessAlert = false"></button>
+            </div>
+            <div class="toast-body">
+                @mensagemSucesso
+            </div>
+        </div>
+    </div>
+}
+
+@code {
+    private bool isLoading = true;
+    private bool isDeleting = false;
+    private bool showDeleteModal = false;
+    private bool showSuccessAlert = false;
+    private string mensagemSucesso = "";
+    private List<Usuario> usuarios = new();
+    private Usuario? usuarioParaExcluir;
+
+    // Filtros
+    private string filtroNome = "";
+    private string filtroEmail = "";
+    private string filtroStatus = "";
+
+    private IEnumerable<Usuario> usuariosFiltrados => 
+        usuarios.Where(u => 
+            (string.IsNullOrEmpty(filtroNome) || u.Nome.Contains(filtroNome, StringComparison.OrdinalIgnoreCase)) &&
+            (string.IsNullOrEmpty(filtroEmail) || u.Email.Contains(filtroEmail, StringComparison.OrdinalIgnoreCase)) &&
+            (string.IsNullOrEmpty(filtroStatus) || u.Ativo.ToString().Equals(filtroStatus, StringComparison.OrdinalIgnoreCase))
+        );
+
+    protected override async Task OnInitializedAsync()
+    {
+        await CarregarUsuarios();
+    }
+
+    private async Task CarregarUsuarios()
+    {
+        try
+        {
+            var todosUsuarios = await UsuarioRepository.GetAllAsync();
+            usuarios = todosUsuarios.OrderBy(u => u.Nome).ToList();
+        }
+        catch (Exception)
+        {
+            usuarios = new List<Usuario>();
+        }
+        finally
+        {
+            isLoading = false;
+        }
+    }
+
+    private void NovoUsuario()
+    {
+        Navigation.NavigateTo("/usuarios/novo");
+    }
+
+    private void EditarUsuario(int id)
+    {
+        Navigation.NavigateTo($"/usuarios/{id}/editar");
+    }
+
+    private void VerDetalhes(int id)
+    {
+        Navigation.NavigateTo($"/usuarios/{id}");
+    }
+
+    private async Task AlternarStatus(Usuario usuario)
+    {
+        try
+        {
+            usuario.Ativo = !usuario.Ativo;
+            await UsuarioRepository.UpdateAsync(usuario);
+            
+            mensagemSucesso = $"Usuário '{usuario.Nome}' {(usuario.Ativo ? "ativado" : "desativado")} com sucesso!";
+            showSuccessAlert = true;
+            StateHasChanged();
+            
+            await Task.Delay(3000);
+            showSuccessAlert = false;
+        }
+        catch (Exception)
+        {
+            // TODO: Implementar tratamento de erro
+        }
+    }
+
+    private void ConfirmarExclusao(Usuario usuario)
+    {
+        usuarioParaExcluir = usuario;
+        showDeleteModal = true;
+    }
+
+    private void CancelarExclusao()
+    {
+        usuarioParaExcluir = null;
+        showDeleteModal = false;
+        isDeleting = false;
+    }
+
+    private async Task ConfirmarExcluirUsuario()
+    {
+        if (usuarioParaExcluir == null) return;
+
+        isDeleting = true;
+        try
+        {
+            await UsuarioRepository.DeleteAsync(usuarioParaExcluir.Id);
+            usuarios.Remove(usuarioParaExcluir);
+            
+            mensagemSucesso = $"Usuário '{usuarioParaExcluir.Nome}' excluído com sucesso!";
+            showSuccessAlert = true;
+            
+            CancelarExclusao();
+            StateHasChanged();
+            
+            await Task.Delay(3000);
+            showSuccessAlert = false;
+        }
+        catch (Exception)
+        {
+            // TODO: Implementar tratamento de erro
+        }
+        finally
+        {
+            isDeleting = false;
+        }
+    }
+
+    private void LimparFiltros()
+    {
+        filtroNome = "";
+        filtroEmail = "";
+        filtroStatus = "";
+    }
+
+    private bool TemFiltroAtivo()
+    {
+        return !string.IsNullOrEmpty(filtroNome) || 
+               !string.IsNullOrEmpty(filtroEmail) || 
+               !string.IsNullOrEmpty(filtroStatus);
+    }
+
+    private string GetInitials(string nome)
+    {
+        if (string.IsNullOrEmpty(nome)) return "??";
+        
+        var parts = nome.Split(' ', StringSplitOptions.RemoveEmptyEntries);
+        if (parts.Length == 1) return parts[0].Substring(0, Math.Min(2, parts[0].Length)).ToUpper();
+        
+        return $"{parts[0][0]}{parts[^1][0]}".ToUpper();
+    }
+
+    private string GetPerfilBadgeClass(string? perfil)
+    {
+        return perfil?.ToLower() switch
+        {
+            "administrador" => "bg-danger",
+            "gerente" => "bg-warning text-dark",
+            "analista" => "bg-primary",
+            "operador" => "bg-info text-dark",
+            _ => "bg-secondary"
+        };
+    }
+}

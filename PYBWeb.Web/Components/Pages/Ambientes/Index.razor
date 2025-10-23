@@ -1,0 +1,258 @@
+@page "/ambientes"
+@inject IAmbienteRepository AmbienteRepository
+@inject NavigationManager Navigation
+
+<PageTitle>Ambientes - PYB CICS</PageTitle>
+
+<div class="container-fluid">
+    <div class="row mb-4">
+        <div class="col-md-8">
+            <h1 class="display-6 text-primary">
+                <i class="bi bi-hdd-network"></i> Ambientes CICS
+            </h1>
+        </div>
+        <div class="col-md-4 text-end">
+            <button class="btn btn-primary" @onclick="NovoAmbiente">
+                <i class="bi bi-plus-circle"></i> Novo Ambiente
+            </button>
+        </div>
+    </div>
+
+    @if (isLoading)
+    {
+        <div class="text-center">
+            <div class="spinner-border text-primary" role="status">
+                <span class="visually-hidden">Carregando...</span>
+            </div>
+        </div>
+    }
+    else if (!ambientes.Any())
+    {
+        <div class="alert alert-info">
+            <i class="bi bi-info-circle"></i>
+            Nenhum ambiente CICS cadastrado.
+        </div>
+    }
+    else
+    {
+        <div class="row">
+            @foreach (var ambiente in ambientes)
+            {
+                <div class="col-md-6 col-lg-4 mb-4">
+                        <div class="card @GetCardClass(ambiente.Tipo) h-100">
+                        <div class="card-header d-flex justify-content-between align-items-center">
+                            <h6 class="card-title mb-0">@ambiente.Nome</h6>
+                            <span class="badge @GetBadgeClass(ambiente.Tipo)">
+                                @GetTipoAmbienteDescricao(ambiente.Tipo)
+                            </span>
+                        </div>
+                        <div class="card-body">
+                            <p class="card-text">@ambiente.Descricao</p>
+                            
+                            <div class="mb-3">
+                                <small class="text-muted">
+                                    <i class="bi bi-server"></i> <strong>Servidor:</strong> @ambiente.Servidor<br>
+                                    <i class="bi bi-plug"></i> <strong>Porta:</strong> @(ambiente.Porta?.ToString() ?? "N/A")<br>
+                                    <i class="bi bi-database"></i> <strong>Região:</strong> @ambiente.RegiaoCics<br>
+                                </small>
+                            </div>                            <div class="d-flex align-items-center mb-2">
+                                <span class="badge @(ambiente.Ativo ? "bg-success" : "bg-danger") me-2">
+                                    @(ambiente.Ativo ? "Ativo" : "Inativo")
+                                </span>
+                                <small class="text-muted">
+                                    Criado em @ambiente.DataCriacao.ToString("dd/MM/yyyy")
+                                </small>
+                            </div>
+                        </div>
+                        <div class="card-footer">
+                            <div class="btn-group w-100" role="group">
+                                <button class="btn btn-outline-primary btn-sm" @onclick="() => EditarAmbiente(ambiente.Id)">
+                                    <i class="bi bi-pencil"></i> Editar
+                                </button>
+                                <button class="btn btn-outline-info btn-sm" @onclick="() => VerDetalhes(ambiente.Id)">
+                                    <i class="bi bi-eye"></i> Detalhes
+                                </button>
+                                <button class="btn btn-outline-danger btn-sm" @onclick="() => ConfirmarExclusao(ambiente)">
+                                    <i class="bi bi-trash"></i> Excluir
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            }
+        </div>
+    }
+</div>
+
+<!-- Modal de Confirmação de Exclusão -->
+@if (showDeleteModal)
+{
+    <div class="modal fade show d-block" tabindex="-1" style="background-color: rgba(0,0,0,0.5);">
+        <div class="modal-dialog">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h5 class="modal-title">Confirmar Exclusão</h5>
+                    <button type="button" class="btn-close" @onclick="CancelarExclusao"></button>
+                </div>
+                <div class="modal-body">
+                    <p>Tem certeza que deseja excluir o ambiente <strong>@ambienteParaExcluir?.Nome</strong>?</p>
+                    <div class="alert alert-warning">
+                        <i class="bi bi-exclamation-triangle"></i>
+                        Esta ação não pode ser desfeita!
+                    </div>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" @onclick="CancelarExclusao">Cancelar</button>
+                    <button type="button" class="btn btn-danger" @onclick="ConfirmarExcluirAmbiente" disabled="@isDeleting">
+                        @if (isDeleting)
+                        {
+                            <span class="spinner-border spinner-border-sm me-2" role="status"></span>
+                        }
+                        Excluir
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+}
+
+@if (showSuccessAlert)
+{
+    <div class="position-fixed top-0 end-0 p-3" style="z-index: 11">
+        <div class="toast show" role="alert">
+            <div class="toast-header">
+                <i class="bi bi-check-circle-fill text-success me-2"></i>
+                <strong class="me-auto">Sucesso</strong>
+                <button type="button" class="btn-close" @onclick="() => showSuccessAlert = false"></button>
+            </div>
+            <div class="toast-body">
+                @mensagemSucesso
+            </div>
+        </div>
+    </div>
+}
+
+@code {
+    private bool isLoading = true;
+    private bool isDeleting = false;
+    private bool showDeleteModal = false;
+    private bool showSuccessAlert = false;
+    private string mensagemSucesso = "";
+    private List<Ambiente> ambientes = new();
+    private Ambiente? ambienteParaExcluir;
+
+    protected override async Task OnInitializedAsync()
+    {
+        await CarregarAmbientes();
+    }
+
+    private async Task CarregarAmbientes()
+    {
+        try
+        {
+            var todosAmbientes = await AmbienteRepository.GetAllAsync();
+            ambientes = todosAmbientes.OrderBy(a => a.Nome).ToList();
+        }
+        catch (Exception)
+        {
+            ambientes = new List<Ambiente>();
+        }
+        finally
+        {
+            isLoading = false;
+        }
+    }
+
+    private void NovoAmbiente()
+    {
+        Navigation.NavigateTo("/ambientes/novo");
+    }
+
+    private void EditarAmbiente(int id)
+    {
+        Navigation.NavigateTo($"/ambientes/{id}/editar");
+    }
+
+    private void VerDetalhes(int id)
+    {
+        Navigation.NavigateTo($"/ambientes/{id}");
+    }
+
+    private void ConfirmarExclusao(Ambiente ambiente)
+    {
+        ambienteParaExcluir = ambiente;
+        showDeleteModal = true;
+    }
+
+    private void CancelarExclusao()
+    {
+        ambienteParaExcluir = null;
+        showDeleteModal = false;
+        isDeleting = false;
+    }
+
+    private async Task ConfirmarExcluirAmbiente()
+    {
+        if (ambienteParaExcluir == null) return;
+
+        isDeleting = true;
+        try
+        {
+            await AmbienteRepository.DeleteAsync(ambienteParaExcluir.Id);
+            ambientes.Remove(ambienteParaExcluir);
+            
+            mensagemSucesso = $"Ambiente '{ambienteParaExcluir.Nome}' excluído com sucesso!";
+            showSuccessAlert = true;
+            
+            CancelarExclusao();
+            StateHasChanged();
+            
+            await Task.Delay(3000);
+            showSuccessAlert = false;
+        }
+        catch (Exception)
+        {
+            // TODO: Implementar tratamento de erro
+        }
+        finally
+        {
+            isDeleting = false;
+        }
+    }
+
+    private string GetCardClass(TipoAmbiente tipo)
+    {
+        return tipo switch
+        {
+            TipoAmbiente.Desenvolvimento => "border-info",
+            TipoAmbiente.Teste => "border-warning",
+            TipoAmbiente.Homologacao => "border-primary",
+            TipoAmbiente.Producao => "border-success",
+            _ => "border-secondary"
+        };
+    }
+
+    private string GetBadgeClass(TipoAmbiente tipo)
+    {
+        return tipo switch
+        {
+            TipoAmbiente.Desenvolvimento => "bg-info",
+            TipoAmbiente.Teste => "bg-warning text-dark",
+            TipoAmbiente.Homologacao => "bg-primary",
+            TipoAmbiente.Producao => "bg-success",
+            _ => "bg-secondary"
+        };
+    }
+
+    private string GetTipoAmbienteDescricao(TipoAmbiente tipo)
+    {
+        return tipo switch
+        {
+            TipoAmbiente.Desenvolvimento => "DEV",
+            TipoAmbiente.Teste => "TST",
+            TipoAmbiente.Homologacao => "HML",
+            TipoAmbiente.Producao => "PRD",
+            _ => "N/A"
+        };
+    }
+}
