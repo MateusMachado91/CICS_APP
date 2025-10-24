@@ -12,17 +12,17 @@ O projeto segue os princípios da **Clean Architecture**, organizado em camadas:
 
 ```
 ├── PYBWeb.Domain/              # Camada de Domínio
-│   ├── Entities/              # Entidades do negócio
-│   ├── Enums/                 # Enumerações
-│   └── Interfaces/            # Interfaces de repositório
-├── PYBWeb.Application/        # Camada de Aplicação (futura)
-├── PYBWeb.Infrastructure/     # Camada de Infraestrutura
-│   ├── Data/                  # DbContext e configurações EF
-│   └── Repositories/          # Implementações dos repositórios
-├── PYBWeb.Web/               # Interface Web Blazor Server
-│   ├── Components/           # Componentes Blazor
-│   └── Pages/               # Páginas da aplicação
-└── PYBWeb.Tests/            # Testes unitários
+│   ├── Entities/               # Entidades do negócio
+│   ├── Enums/                  # Enumerações
+│   └── Interfaces/             # Interfaces de repositório
+├── PYBWeb.Application/         # Camada de Aplicação (futura)
+├── PYBWeb.Infrastructure/      # Camada de Infraestrutura
+│   ├── Data/                   # DbContext e configurações EF
+│   └── Repositories/           # Implementações dos repositórios
+├── PYBWeb.Web/                 # Interface Web Blazor Server
+│   ├── Components/             # Componentes Blazor
+│   └── Pages/                  # Páginas da aplicação
+└── PYBWeb.Tests/               # Testes unitários
 ```
 
 ## 🚀 Tecnologias Utilizadas
@@ -30,7 +30,7 @@ O projeto segue os princípios da **Clean Architecture**, organizado em camadas:
 - **.NET 8.0** - Framework principal (compatível com .NET 8 e superior)
 - **Blazor Server** - Interface web interativa
 - **Entity Framework Core** - ORM para acesso a dados
-- **SQL Server** - Banco de dados
+- **SQLite** - Banco de dados
 - **Bootstrap 5** - Framework CSS para UI responsiva
 - **Bootstrap Icons** - Ícones
 
@@ -39,7 +39,7 @@ O projeto segue os princípios da **Clean Architecture**, organizado em camadas:
 ### ✅ Implementadas
 - **Dashboard** com estatísticas das solicitações
 - **Listagem de Solicitações** com filtros por status, tipo de tabela e busca por texto
-- **Gerenciamento de Ambientes CICS** (Desenvolvimento, Teste, Homologação, Produção)
+- **Escolha do Ambientes CICS**
 - **Tipos de Tabela CICS**:
   - **DCT** - Destination Control Table
   - **FCT** - File Control Table  
