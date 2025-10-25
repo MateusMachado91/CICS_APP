@@ -20,6 +20,7 @@ public class PYBWebDbContext : DbContext
     public DbSet<HistoricoSolicitacao> HistoricoSolicitacoes { get; set; }
     public DbSet<AnexoSolicitacao> AnexosSolicitacao { get; set; }
     public DbSet<Usuario> Usuarios { get; set; }
+    public DbSet<IniConfiguration> IniConfigurations { get; set; }
 
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {
@@ -216,6 +217,36 @@ public class PYBWebDbContext : DbContext
                 
             entity.HasIndex(e => e.Login).IsUnique();
             entity.HasIndex(e => e.Email).IsUnique();
+        });
+
+        // Configuração da entidade IniConfiguration
+        modelBuilder.Entity<IniConfiguration>(entity =>
+        {
+            entity.HasKey(e => e.Id);
+            
+            entity.Property(e => e.NomeArquivo)
+                .IsRequired()
+                .HasMaxLength(100);
+                
+            entity.Property(e => e.Secao)
+                .IsRequired()
+                .HasMaxLength(100);
+                
+            entity.Property(e => e.Chave)
+                .IsRequired()
+                .HasMaxLength(100);
+                
+            entity.Property(e => e.Valor)
+                .HasMaxLength(500);
+                
+            entity.Property(e => e.Descricao)
+                .HasMaxLength(200);
+                
+            entity.Property(e => e.TipoConfiguracao)
+                .HasMaxLength(50);
+                
+            // Índice único para evitar configurações duplicadas
+            entity.HasIndex(e => new { e.NomeArquivo, e.Secao, e.Chave }).IsUnique();
         });
 
         // Configuração de valores padrão para campos de auditoria

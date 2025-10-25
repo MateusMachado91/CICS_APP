@@ -4,6 +4,7 @@ using Microsoft.Extensions.DependencyInjection;
 using PYBWeb.Domain.Interfaces;
 using PYBWeb.Infrastructure.Data;
 using PYBWeb.Infrastructure.Repositories;
+using PYBWeb.Infrastructure.Services;
 
 namespace PYBWeb.Infrastructure;
 
@@ -25,6 +26,14 @@ public static class DependencyInjection
         services.AddScoped<ISolicitacaoRepository, SolicitacaoRepository>();
         services.AddScoped<IAmbienteRepository, AmbienteRepository>();
         services.AddScoped<IUsuarioRepository, UsuarioRepository>();
+        services.AddScoped<IIniConfigurationRepository, IniConfigurationRepository>();
+
+        // Registro dos serviços
+        services.AddScoped<IIniConfigurationService, IniConfigurationService>();
+        services.AddScoped<ILegacyDataMigrationService, LegacyDataMigrationService>();
+
+        // Serviços em background
+        services.AddHostedService<LegacyDataSyncHostedService>();
 
         return services;
     }

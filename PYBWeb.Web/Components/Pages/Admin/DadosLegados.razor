@@ -1,0 +1,527 @@
+@page "/admin/dados-legados"
+@using PYBWeb.Domain.Interfaces
+@inject IIniConfigurationService IniService
+@inject ILegacyDataMigrationService MigrationService
+@inject IJSRuntime JSRuntime
+
+<PageTitle>Dados Legados - PYB CICS</PageTitle>
+
+<div class="container-fluid mt-4">
+    <div class="row">
+        <div class="col-12">
+            <div class="d-flex justify-content-between align-items-center mb-4">
+                <h2><i class="bi bi-database-gear"></i> Gerenciamento de Dados Legados</h2>
+                <nav aria-label="breadcrumb">
+                    <ol class="breadcrumb">
+                        <li class="breadcrumb-item"><a href="/">Home</a></li>
+                        <li class="breadcrumb-item active">Dados Legados</li>
+                    </ol>
+                </nav>
+            </div>
+        </div>
+    </div>
+
+    <!-- Cards de Status -->
+    <div class="row mb-4">
+        <div class="col-md-3">
+            <div class="card bg-primary text-white">
+                <div class="card-body">
+                    <div class="d-flex justify-content-between">
+                        <div>
+                            <h6 class="card-title">Arquivos INI</h6>
+                            <h4 class="mb-0">@totalArquivosIni</h4>
+                        </div>
+                        <div class="align-self-center">
+                            <i class="bi bi-file-earmark-text fa-2x"></i>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+        <div class="col-md-3">
+            <div class="card bg-success text-white">
+                <div class="card-body">
+                    <div class="d-flex justify-content-between">
+                        <div>
+                            <h6 class="card-title">Configurações</h6>
+                            <h4 class="mb-0">@totalConfiguracoes</h4>
+                        </div>
+                        <div class="align-self-center">
+                            <i class="bi bi-gear fa-2x"></i>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+        <div class="col-md-3">
+            <div class="card bg-info text-white">
+                <div class="card-body">
+                    <div class="d-flex justify-content-between">
+                        <div>
+                            <h6 class="card-title">Usuários Migrados</h6>
+                            <h4 class="mb-0">@totalUsuarios</h4>
+                        </div>
+                        <div class="align-self-center">
+                            <i class="bi bi-people fa-2x"></i>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+        <div class="col-md-3">
+            <div class="card bg-warning text-white">
+                <div class="card-body">
+                    <div class="d-flex justify-content-between">
+                        <div>
+                            <h6 class="card-title">Solicitações Migradas</h6>
+                            <h4 class="mb-0">@totalSolicitacoes</h4>
+                        </div>
+                        <div class="align-self-center">
+                            <i class="bi bi-file-earmark-check fa-2x"></i>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Tabs -->
+    <ul class="nav nav-tabs" id="dadosLegadosTab" role="tablist">
+        <li class="nav-item" role="presentation">
+            <button class="nav-link active" id="configuracoes-tab" data-bs-toggle="tab" data-bs-target="#configuracoes" type="button" role="tab">
+                <i class="bi bi-gear"></i> Configurações INI
+            </button>
+        </li>
+        <li class="nav-item" role="presentation">
+            <button class="nav-link" id="migracao-tab" data-bs-toggle="tab" data-bs-target="#migracao" type="button" role="tab">
+                <i class="bi bi-arrow-repeat"></i> Migração de Dados
+            </button>
+        </li>
+        <li class="nav-item" role="presentation">
+            <button class="nav-link" id="analise-tab" data-bs-toggle="tab" data-bs-target="#analise" type="button" role="tab">
+                <i class="bi bi-graph-up"></i> Análise
+            </button>
+        </li>
+    </ul>
+
+    <div class="tab-content" id="dadosLegadosTabContent">
+        <!-- Tab Configurações INI -->
+        <div class="tab-pane fade show active" id="configuracoes" role="tabpanel">
+            <div class="card mt-3">
+                <div class="card-header">
+                    <div class="d-flex justify-content-between align-items-center">
+                        <h5 class="mb-0"><i class="bi bi-file-earmark-text"></i> Configurações dos Arquivos INI</h5>
+                        <button class="btn btn-primary btn-sm" @onclick="SincronizarConfiguracoes" disabled="@carregando">
+                            @if (carregando)
+                            {
+                                <span class="spinner-border spinner-border-sm me-2"></span>
+                            }
+                            <i class="bi bi-arrow-clockwise"></i> Sincronizar
+                        </button>
+                    </div>
+                </div>
+                <div class="card-body">
+                    @if (configuracoes?.Any() == true)
+                    {
+                        <div class="accordion" id="accordionConfiguracoes">
+                            @foreach (var arquivo in configuracoes.Keys)
+                            {
+                                <div class="accordion-item">
+                                    <h2 class="accordion-header">
+                                        <button class="accordion-button collapsed" type="button" data-bs-toggle="collapse" data-bs-target="#@($"collapse{arquivo.Replace(".", "")}")">
+                                            <i class="bi bi-file-earmark-text me-2"></i> @arquivo
+                                            <span class="badge bg-secondary ms-2">@configuracoes[arquivo].Sum(s => s.Value.Count) configurações</span>
+                                        </button>
+                                    </h2>
+                                    <div id="@($"collapse{arquivo.Replace(".", "")}")" class="accordion-collapse collapse" data-bs-parent="#accordionConfiguracoes">
+                                        <div class="accordion-body">
+                                            @foreach (var secao in configuracoes[arquivo])
+                                            {
+                                                <h6 class="text-primary"><i class="bi bi-folder"></i> [@secao.Key]</h6>
+                                                <div class="table-responsive mb-3">
+                                                    <table class="table table-sm table-striped">
+                                                        <thead>
+                                                            <tr>
+                                                                <th>Chave</th>
+                                                                <th>Valor</th>
+                                                            </tr>
+                                                        </thead>
+                                                        <tbody>
+                                                            @foreach (var config in secao.Value)
+                                                            {
+                                                                <tr>
+                                                                    <td><code>@config.Key</code></td>
+                                                                    <td>@config.Value</td>
+                                                                </tr>
+                                                            }
+                                                        </tbody>
+                                                    </table>
+                                                </div>
+                                            }
+                                        </div>
+                                    </div>
+                                </div>
+                            }
+                        </div>
+                    }
+                    else
+                    {
+                        <div class="text-center py-4">
+                            <i class="bi bi-file-earmark-x text-muted" style="font-size: 3rem;"></i>
+                            <p class="text-muted mt-2">Nenhuma configuração INI encontrada. Clique em "Sincronizar" para carregar os arquivos.</p>
+                        </div>
+                    }
+                </div>
+            </div>
+        </div>
+
+        <!-- Tab Migração -->
+        <div class="tab-pane fade" id="migracao" role="tabpanel">
+            <div class="card mt-3">
+                <div class="card-header">
+                    <h5 class="mb-0"><i class="bi bi-arrow-repeat"></i> Migração de Dados Legados</h5>
+                </div>
+                <div class="card-body">
+                    <div class="row">
+                        <div class="col-md-6">
+                            <h6><i class="bi bi-people"></i> Migração de Usuários</h6>
+                            <p class="text-muted">Importa usuários/colaboradores do banco colaboradores.db</p>
+                            <button class="btn btn-outline-primary" @onclick="ImportarUsuarios" disabled="@carregando">
+                                @if (carregandoUsuarios)
+                                {
+                                    <span class="spinner-border spinner-border-sm me-2"></span>
+                                }
+                                <i class="bi bi-download"></i> Importar Usuários
+                            </button>
+                        </div>
+                        <div class="col-md-6">
+                            <h6><i class="bi bi-file-earmark-check"></i> Migração de Solicitações</h6>
+                            <p class="text-muted">Importa solicitações do banco dados2025.db</p>
+                            <button class="btn btn-outline-success" @onclick="ImportarSolicitacoes" disabled="@carregando">
+                                @if (carregandoSolicitacoes)
+                                {
+                                    <span class="spinner-border spinner-border-sm me-2"></span>
+                                }
+                                <i class="bi bi-download"></i> Importar Solicitações
+                            </button>
+                        </div>
+                    </div>
+                    <hr>
+                    <div class="text-center">
+                        <h6><i class="bi bi-gear"></i> Migração Completa</h6>
+                        <p class="text-muted">Executa toda a migração de dados (usuários e solicitações)</p>
+                        <button class="btn btn-primary" @onclick="ExecutarMigracaoCompleta" disabled="@carregando">
+                            @if (carregandoMigracao)
+                            {
+                                <span class="spinner-border spinner-border-sm me-2"></span>
+                            }
+                            <i class="bi bi-play-circle"></i> Executar Migração Completa
+                        </button>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Tab Análise -->
+        <div class="tab-pane fade" id="analise" role="tabpanel">
+            <div class="card mt-3">
+                <div class="card-header">
+                    <div class="d-flex justify-content-between align-items-center">
+                        <h5 class="mb-0"><i class="bi bi-graph-up"></i> Análise dos Bancos Legados</h5>
+                        <button class="btn btn-outline-info btn-sm" @onclick="AnalisarEstrutura" disabled="@carregando">
+                            @if (carregandoAnalise)
+                            {
+                                <span class="spinner-border spinner-border-sm me-2"></span>
+                            }
+                            <i class="bi bi-search"></i> Analisar
+                        </button>
+                    </div>
+                </div>
+                <div class="card-body">
+                    @if (analiseEstrutura?.Any() == true)
+                    {
+                        @foreach (var banco in analiseEstrutura)
+                        {
+                            <div class="mb-4">
+                                <h6 class="text-info"><i class="bi bi-database"></i> @banco.Key</h6>
+                                @if (banco.Value is Dictionary<string, object> bancoDados)
+                                {
+                                    @if (bancoDados.ContainsKey("erro"))
+                                    {
+                                        <div class="alert alert-warning">
+                                            <i class="bi bi-exclamation-triangle"></i> @bancoDados["erro"]
+                                        </div>
+                                    }
+                                    else
+                                    {
+                                        @if (bancoDados.ContainsKey("estruturas") && bancoDados["estruturas"] is Dictionary<string, object> estruturas)
+                                        {
+                                            <div class="table-responsive">
+                                                <table class="table table-sm">
+                                                    <thead>
+                                                        <tr>
+                                                            <th>Tabela</th>
+                                                            <th>Registros</th>
+                                                            <th>Colunas</th>
+                                                        </tr>
+                                                    </thead>
+                                                    <tbody>
+                                                        @foreach (var tabela in estruturas)
+                                                        {
+                                                            <tr>
+                                                                <td><code>@tabela.Key</code></td>
+                                                                <td>
+                                                                    @if (tabela.Value is System.Text.Json.JsonElement tabelaInfo)
+                                                                    {
+                                                                        @if (tabelaInfo.TryGetProperty("total_registros", out var totalProp))
+                                                                        {
+                                                                            <span class="badge bg-info">@totalProp</span>
+                                                                        }
+                                                                    }
+                                                                </td>
+                                                                <td>
+                                                                    @if (tabela.Value is System.Text.Json.JsonElement tabelaInfo2)
+                                                                    {
+                                                                        @if (tabelaInfo2.TryGetProperty("colunas", out var colunasProp) && colunasProp.ValueKind == System.Text.Json.JsonValueKind.Array)
+                                                                        {
+                                                                            <span class="badge bg-secondary">@colunasProp.GetArrayLength() colunas</span>
+                                                                        }
+                                                                    }
+                                                                </td>
+                                                            </tr>
+                                                        }
+                                                    </tbody>
+                                                </table>
+                                            </div>
+                                        }
+                                    }
+                                }
+                            </div>
+                        }
+                    }
+                    else
+                    {
+                        <div class="text-center py-4">
+                            <i class="bi bi-search text-muted" style="font-size: 3rem;"></i>
+                            <p class="text-muted mt-2">Clique em "Analisar" para examinar a estrutura dos bancos legados.</p>
+                        </div>
+                    }
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Mensagens -->
+    @if (!string.IsNullOrEmpty(mensagem))
+    {
+        <div class="alert alert-@(tipoMensagem) alert-dismissible fade show mt-3" role="alert">
+            <i class="bi bi-@(tipoMensagem == "success" ? "check-circle" : tipoMensagem == "danger" ? "exclamation-triangle" : "info-circle")"></i>
+            @mensagem
+            <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+        </div>
+    }
+</div>
+
+@code {
+    private bool carregando = false;
+    private bool carregandoUsuarios = false;
+    private bool carregandoSolicitacoes = false;
+    private bool carregandoMigracao = false;
+    private bool carregandoAnalise = false;
+
+    private string mensagem = string.Empty;
+    private string tipoMensagem = "info";
+
+    private int totalArquivosIni = 0;
+    private int totalConfiguracoes = 0;
+    private int totalUsuarios = 0;
+    private int totalSolicitacoes = 0;
+
+    private Dictionary<string, Dictionary<string, Dictionary<string, string>>>? configuracoes;
+    private Dictionary<string, object>? analiseEstrutura;
+
+    protected override async Task OnInitializedAsync()
+    {
+        await CarregarEstatisticas();
+    }
+
+    private async Task CarregarEstatisticas()
+    {
+        try
+        {
+            var validacao = await MigrationService.ValidarDadosMigradosAsync();
+            if (validacao.ContainsKey("usuarios_total"))
+                totalUsuarios = Convert.ToInt32(validacao["usuarios_total"]);
+            if (validacao.ContainsKey("solicitacoes_total"))
+                totalSolicitacoes = Convert.ToInt32(validacao["solicitacoes_total"]);
+        }
+        catch (Exception ex)
+        {
+            ExibirMensagem($"Erro ao carregar estatísticas: {ex.Message}", "warning");
+        }
+    }
+
+    private async Task SincronizarConfiguracoes()
+    {
+        carregando = true;
+        try
+        {
+            var sucesso = await IniService.SincronizarConfiguracoesAsync();
+            if (sucesso)
+            {
+                ExibirMensagem("Configurações INI sincronizadas com sucesso!", "success");
+                await CarregarConfiguracoes();
+            }
+            else
+            {
+                ExibirMensagem("Nenhum arquivo INI encontrado para sincronizar.", "warning");
+            }
+        }
+        catch (Exception ex)
+        {
+            ExibirMensagem($"Erro ao sincronizar configurações: {ex.Message}", "danger");
+        }
+        finally
+        {
+            carregando = false;
+        }
+    }
+
+    private async Task CarregarConfiguracoes()
+    {
+        configuracoes = new Dictionary<string, Dictionary<string, Dictionary<string, string>>>();
+        
+        var arquivos = new[] { "PYBK00VW.INI", "PYBK02MW.INI" };
+        totalArquivosIni = 0;
+        totalConfiguracoes = 0;
+
+        foreach (var arquivo in arquivos)
+        {
+            try
+            {
+                var configs = await IniService.ObterTodasConfiguracoesAsync(arquivo);
+                if (configs.Any())
+                {
+                    configuracoes[arquivo] = configs;
+                    totalArquivosIni++;
+                    totalConfiguracoes += configs.Sum(s => s.Value.Count);
+                }
+            }
+            catch (Exception ex)
+            {
+                ExibirMensagem($"Erro ao carregar configurações do arquivo {arquivo}: {ex.Message}", "warning");
+            }
+        }
+    }
+
+    private async Task ImportarUsuarios()
+    {
+        carregandoUsuarios = true;
+        try
+        {
+            var sucesso = await MigrationService.ImportarUsuariosAsync();
+            if (sucesso)
+            {
+                ExibirMensagem("Usuários importados com sucesso!", "success");
+                await CarregarEstatisticas();
+            }
+            else
+            {
+                ExibirMensagem("Nenhum usuário encontrado para importar.", "warning");
+            }
+        }
+        catch (Exception ex)
+        {
+            ExibirMensagem($"Erro ao importar usuários: {ex.Message}", "danger");
+        }
+        finally
+        {
+            carregandoUsuarios = false;
+        }
+    }
+
+    private async Task ImportarSolicitacoes()
+    {
+        carregandoSolicitacoes = true;
+        try
+        {
+            var sucesso = await MigrationService.ImportarSolicitacoesAsync();
+            if (sucesso)
+            {
+                ExibirMensagem("Solicitações importadas com sucesso!", "success");
+                await CarregarEstatisticas();
+            }
+            else
+            {
+                ExibirMensagem("Nenhuma solicitação encontrada para importar.", "warning");
+            }
+        }
+        catch (Exception ex)
+        {
+            ExibirMensagem($"Erro ao importar solicitações: {ex.Message}", "danger");
+        }
+        finally
+        {
+            carregandoSolicitacoes = false;
+        }
+    }
+
+    private async Task ExecutarMigracaoCompleta()
+    {
+        carregandoMigracao = true;
+        try
+        {
+            var sucesso = await MigrationService.ExecutarMigracaoCompletaAsync();
+            if (sucesso)
+            {
+                ExibirMensagem("Migração completa executada com sucesso!", "success");
+                await CarregarEstatisticas();
+            }
+            else
+            {
+                ExibirMensagem("Nenhum dado encontrado para migrar.", "warning");
+            }
+        }
+        catch (Exception ex)
+        {
+            ExibirMensagem($"Erro na migração completa: {ex.Message}", "danger");
+        }
+        finally
+        {
+            carregandoMigracao = false;
+        }
+    }
+
+    private async Task AnalisarEstrutura()
+    {
+        carregandoAnalise = true;
+        try
+        {
+            analiseEstrutura = await MigrationService.AnalisarEstruturaBancosAsync();
+            ExibirMensagem("Análise da estrutura concluída!", "success");
+        }
+        catch (Exception ex)
+        {
+            ExibirMensagem($"Erro ao analisar estrutura: {ex.Message}", "danger");
+        }
+        finally
+        {
+            carregandoAnalise = false;
+        }
+    }
+
+    private void ExibirMensagem(string texto, string tipo)
+    {
+        mensagem = texto;
+        tipoMensagem = tipo;
+        StateHasChanged();
+
+        // Remove a mensagem após 5 segundos
+        Task.Run(async () =>
+        {
+            await Task.Delay(5000);
+            mensagem = string.Empty;
+            await InvokeAsync(StateHasChanged);
+        });
+    }
+}
